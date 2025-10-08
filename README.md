@@ -1,4 +1,4 @@
-# Bill Agunyo — Data Analytics Portfolio
+# Bill Agunyo: Data Analytics Portfolio
 
 Welcome to my data analytics portfolio! This repository showcases end-to-end analytics projects across multiple domains, including healthcare, finance, sales, and marketing. Each project demonstrates my ability to collect, clean, analyze, and visualize data to uncover insights and drive better decisions.
 
