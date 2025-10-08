@@ -4,7 +4,7 @@ Welcome to my data analytics portfolio! This repository showcases end-to-end ana
 
 ## About Me
 
-I’m passionate about using data to tell stories and solve real-world problems. My work combines data wrangling, statistical analysis, and visualization to communicate findings clearly and effectively. I enjoy exploring how everyday patterns — from healthcare habits to market behaviors — reveal meaningful insights.
+I’m passionate about using data to tell stories and solve real-world problems. My work combines data wrangling, statistical analysis, and visualization to communicate findings clearly and effectively. I enjoy exploring how everyday patterns, from healthcare habits to market behaviors, reveal meaningful insights.
 
 ## Tools & Technologies
 
