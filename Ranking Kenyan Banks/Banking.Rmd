@@ -1,0 +1,196 @@
+---
+title: "Bank Perfomance Analysis Using PCA"
+author: "Bill Ongete Agunyo"
+date: "2026-04-16"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+---
+
+# 1. Introduction
+
+This analysis is designed to create a Bank Strength Index that will rank Kenyan banks using various financial and operational indicators extracted from the Central Bank of Kenya's [Bank Supervision Annual Report](ank Supervision Annual Report) (2024). This approach uses various dimensions of performance like size, profitability, risk, market position, and accessibility. The analysis uses Principal Component Analysis to combine these variables to a one comprehensive index.
+
+The analysis focuses strictly the 38 commercial banks listed in the CBK Directory, hence it does not cover the Micro finance Banks and other financial institutions.
+
+------------------------------------------------------------------------
+
+# 2. Analysis
+
+## 2.1 Data Loading
+
+```{r}
+library(readxl)
+
+BankData <- read_excel("C:/Users/User/OneDrive/Desktop/BankData.xlsx")
+bank <- BankData
+```
+
+The data set is imported from Excel and stored as a working object (`bank`) for further processing.
+
+## 2.2 Data Cleaning
+
+### 2.2.1 Removing Invalid Obsercation
+
+```{r}
+bank <- bank[!is.na(bank$bank_name) & bank$bank_name != "", ]
+```
+
+Rows with missing or blank bank names are removed, as they do not represent valid entities and would distort the ranking.
+
+### 2.2.2 Selecting Relevant Variables
+
+```{r}
+vars <- c(
+  "total_assets_ksh_m",
+  "gross_loans_dec_24_ksh_m",
+  "customer_deposits_dec_24",
+  "trwa_ksh_m",
+  "total_capital_ksh_m",
+  "shareholders_funds_ksh_m",
+  "profit_loss_before_tax_ksh_m",
+  "gross_npls_dec_24_ksh_m",
+  "value_of_npls_2024_ksh_m",
+  "market_share_2024_percent",
+  "branches"
+)
+```
+
+These variables were selected to represent:
+
+-   **Size**: Assets, Loans, Deposits
+
+-   **Profitability**: Profit Before Tax
+
+-   **Risk**: Non-Performing Loans
+
+-   **Capital strength:** Total Capital
+
+-   **Market position:** Market Share
+
+-   **Accessibility**: Number of Branches
+
+### 2.2.3 Converting Data to Numeric
+
+```{r}
+bank[vars] <- lapply(bank[vars], function(x) {
+  x <- gsub(",", "", x)
+  x <- gsub(" ", "", x)
+  as.numeric(x)
+})
+```
+
+The formating of the financial data in excel may be inconsistent, i.e., some my contain commas or spaces. Converting it to numerical format makes it clear and consistent and viable for analysis.
+
+### 2.2.4 Handling Missing Values
+
+```{r}
+bank <- bank[rowSums(is.na(bank[vars])) < length(vars) * 0.3, ]
+```
+
+Observations with excessive missing data (\>30%) are removed to improve reliability.
+
+```{r}
+bank[vars] <- lapply(bank[vars], function(x) {
+  x[is.na(x)] <- median(x, na.rm = TRUE)
+  x
+})
+```
+
+The rest of the missing values are replaced with the median which is not affected by outliers.
+
+### 2.2.5 Log Transformation
+
+```{r}
+vars_to_log <- vars[1:9]
+
+bank[vars_to_log] <- lapply(bank[vars_to_log], function(x) {
+  x[x < 0] <- NA
+  x[is.na(x)] <- median(x, na.rm = TRUE)
+  log1p(x)
+})
+```
+
+Financial variables are highly skewed due to large differences between banks. Log transformation reduces skewness and improves comparability.
+
+## 2.3 Setting Up a Market Position Variable
+
+```{r}
+bank$rank_market_share <- rank(-bank$market_share_2024_percent)
+bank$rank_score <- max(bank$rank_market_share) - bank$rank_market_share + 1
+```
+
+Market share is converted into a ranking variable to capture competitive positioning as higher-ranked banks are considered stronger in the market.
+
+## 2.4 Principal Component Analysis
+
+### 2.4.1 Data Preparation for PCA
+
+```{r}
+model_vars <- c(vars_to_log, "market_share_2024_percent", "branches", "rank_score")
+
+bank_model <- bank[model_vars]
+bank_std <- as.data.frame(scale(bank_model))
+```
+
+Variables are standardised so that each contributes equally to the analysis, preventing large-scale variables from dominating.
+
+### 2.4.2 Principal Component Analysis
+
+```{r}
+pca_model <- prcomp(bank_std)
+summary(pca_model)
+```
+
+PCA reduces multiple variables into a smaller number of components. The first component captures the largest variation in bank performance.
+
+## 2.5 Constructing Bank Strength Index
+
+```{r}
+bank$bank_strength_index <- pca_model$x[,1]
+```
+
+The first principal component is used as the **Bank Strength Index**, representing overall performance.
+
+## 2.6 Adjusting Direction
+
+```{r}
+if(cor(bank$bank_strength_index, bank$total_assets_ksh_m) < 0){
+  bank$bank_strength_index <- -bank$bank_strength_index
+}
+```
+
+PCA components can be inverted. This step ensures that higher values correspond to stronger banks.
+
+## 2.7 Final Ranking
+
+```{r}
+bank$final_rank <- rank(-bank$bank_strength_index)
+
+final_results <- bank[order(bank$final_rank), ]
+```
+
+Banks are ranked from best to worst based on the constructed index.
+
+# 3. Findings
+
+```{r}
+final_results_clean <- final_results[, c(
+  "final_rank",
+  "bank_name",
+  "bank_strength_index",
+  "market_share_2024_percent",
+  "branches"
+)]
+
+final_results_clean
+```
+
+The final table presents a clear ranking of banks along with key indicators.
+
+# 11. Conclusion
+
+This analysis developed a composite index to evaluate bank performance using multiple dimensions, including size, profitability, risk, and accessibility. By applying PCA, the model reduces complexity while retaining key information, producing a robust and data-driven ranking.
+
+The inclusion of branch networks and market share ensures that both financial strength and operational reach are considered. Overall, the results provide a comprehensive view of relative bank performance.
